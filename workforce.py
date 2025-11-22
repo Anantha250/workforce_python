@@ -8,6 +8,7 @@ import math
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
 
 DB = {
     "host": os.getenv("DB_HOST"),
