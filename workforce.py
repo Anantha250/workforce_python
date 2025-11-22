@@ -7,9 +7,6 @@ import matplotlib.pyplot as plt
 import math
 
 
-# ----------------------------------------------------
-# DATABASE CONFIG
-# ----------------------------------------------------
 DB = {
     "host": "localhost",
     "user": "root",
@@ -20,9 +17,7 @@ DB = {
 ADMIN_PASSWORD = "admin123"
 
 
-# ----------------------------------------------------
-# DATABASE CLASS
-# ----------------------------------------------------
+
 class DBConn:
     def __init__(self):
         self.conn = mysql.connector.connect(**DB)
@@ -47,9 +42,6 @@ class DBConn:
         return self.cur.fetchone()
 
 
-# ----------------------------------------------------
-# MAIN GUI APP
-# ----------------------------------------------------
 class App(ctk.CTk):
     def __init__(self, db: DBConn):
         super().__init__()
@@ -66,11 +58,8 @@ class App(ctk.CTk):
 
         self.build_ui()
 
-    # ------------------------------------------------
-    # UI LAYOUT
-    # ------------------------------------------------
+
     def build_ui(self):
-        # LEFT MENU
         self.menu = ctk.CTkFrame(self, width=200)
         self.menu.pack(side="left", fill="y")
 
@@ -186,9 +175,6 @@ class App(ctk.CTk):
     def show_shift(self):
         self.show_table_generic("Shifts", "SELECT * FROM shift")
 
-    # ------------------------------------------------
-    # EMPLOYEES ADMIN (เพิ่ม/ลบพนักงาน)
-    # ------------------------------------------------
     def show_employees_admin(self):
         if not self.check_admin_password():
             return
@@ -371,9 +357,6 @@ class App(ctk.CTk):
 
         refresh_table()
 
-    # ------------------------------------------------
-    # TIME RECORDS – CHECK IN / OUT
-    # ------------------------------------------------
     def show_time_entry_form(self):
         self.clear_body()
 
@@ -702,16 +685,10 @@ class App(ctk.CTk):
             tree.insert("", "end", values=row)
         tree.pack(fill="both", expand=True, pady=10)
 
-    # ------------------------------------------------
-    # EXPORT (วางโครง)
-    # ------------------------------------------------
     def export_excel(self):
         messagebox.showinfo("COMING SOON", "Export Excel กำลังพัฒนา…")
 
 
-# ----------------------------------------------------
-# RUN
-# ----------------------------------------------------
 def main():
     db = DBConn()
 
