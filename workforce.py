@@ -98,7 +98,7 @@ class App(ctk.CTk):
         menu_button("OT per Department (by week)", self.show_weekly_ot_by_dept).pack(
             fill="x", pady=6, padx=12
         )
-        menu_button("Weekly OT > 20 hrs", self.show_weekly_ot_over_limit).pack(
+        menu_button("Weekly OT > 60 hrs", self.show_weekly_ot_over_limit).pack(
             fill="x", pady=6, padx=12
         )
 
@@ -431,279 +431,300 @@ class App(ctk.CTk):
         refresh_table()
 
     def show_time_entry_form(self):
-        self.clear_body()
+            self.clear_body()
 
-        wrapper = ctk.CTkFrame(self.body, fg_color=self.card_color, corner_radius=14)
-        wrapper.pack(fill="both", expand=True, padx=20, pady=20)
+            wrapper = ctk.CTkFrame(self.body, fg_color=self.card_color, corner_radius=14)
+            wrapper.pack(fill="both", expand=True, padx=20, pady=20)
 
-        ctk.CTkLabel(
-            wrapper,
-            text="Time Record – Check In / Check Out",
-            font=("Helvetica", 18, "bold"),
-            text_color=self.text_color,
-        ).grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky="w")
+            ctk.CTkLabel(
+                wrapper,
+                text="Time Record – Check In / Check Out",
+                font=("Helvetica", 18, "bold"),
+                text_color=self.text_color,
+            ).grid(row=0, column=0, columnspan=2, pady=(0, 10), sticky="w")
 
-        fields = [
-            ("Employee ID", "emp_id"),
-            ("Work Date (YYYY-MM-DD)", "work_date"),
-            ("Job Type (W/L/H/T)", "job_type"),
-            ("Shift Code", "shift_code"),
-        ]
-        entries = {}
-        for idx, (label_text, key) in enumerate(fields, start=1):
-            ctk.CTkLabel(wrapper, text=label_text, text_color=self.text_color).grid(
-                row=idx, column=0, pady=6, padx=5, sticky="e"
-            )
-            entry = ctk.CTkEntry(wrapper, width=200)
-            entry.grid(row=idx, column=1, pady=6, padx=5, sticky="w")
-            entries[key] = entry
-
-        from datetime import date
-        entries["work_date"].insert(0, date.today().strftime("%Y-%m-%d"))
-
-        def parse_time_str(t: str):
-            t = t.strip()
-            if not t:
-                return None
-            try:
-                return datetime.strptime(t, "%H:%M:%S")
-            except ValueError:
-                raise ValueError("รูปแบบเวลาต้องเป็น HH:MM:SS เช่น 08:00:00")
-
-        def calc_hours(diff):
-            raw = diff.total_seconds() / 3600.0
-            if raw <= 0:
-                return 0.0
-            return float(math.ceil(raw))  
-
-        def get_base_info():
-            data = {k: v.get().strip() for k, v in entries.items()}
-            required_keys = ["emp_id", "work_date", "job_type", "shift_code"]
-            if any(not data[k] for k in required_keys):
-                messagebox.showwarning(
-                    "Missing Data",
-                    "กรุณากรอก Employee ID, Work Date, Job Type และ Shift Code ให้ครบ"
+            fields = [
+                ("Employee ID", "emp_id"),
+                ("Work Date (YYYY-MM-DD)", "work_date"),
+                ("Job Type (W/L/H/T)", "job_type"),
+                ("Shift Code", "shift_code"),
+            ]
+            entries = {}
+            for idx, (label_text, key) in enumerate(fields, start=1):
+                ctk.CTkLabel(wrapper, text=label_text, text_color=self.text_color).grid(
+                    row=idx, column=0, pady=6, padx=5, sticky="e"
                 )
-                return None
-            data["job_type"] = data["job_type"].upper()
-            return data
+                entry = ctk.CTkEntry(wrapper, width=200)
+                entry.grid(row=idx, column=1, pady=6, padx=5, sticky="w")
+                entries[key] = entry
 
-        def handle_check_in():
-            base = get_base_info()
-            if not base:
-                return
+            from datetime import date
+            entries["work_date"].insert(0, date.today().strftime("%Y-%m-%d"))
 
-            emp_id = base["emp_id"]
-            work_date = base["work_date"]
-            job_type = base["job_type"]
-            shift_code = base["shift_code"]
-
-            exists = self.db.fetch_one(
-                "SELECT 1 FROM time_records WHERE emp_id=%s AND work_date=%s",
-                (emp_id, work_date),
+            ctk.CTkLabel(wrapper, text="Clock In (auto)", text_color=self.text_color).grid(
+                row=5, column=0, pady=6, padx=5, sticky="e"
             )
-            if exists:
-                messagebox.showwarning(
-                    "Already Checked In",
-                    f"วันนี้ ( {work_date} ) มี Time Record ของ emp_id {emp_id} อยู่แล้ว"
+            clock_in_entry = ctk.CTkEntry(wrapper, width=200)
+            clock_in_entry.grid(row=5, column=1, pady=6, padx=5, sticky="w")
+            clock_in_entry.configure(state="readonly")
+            entries["clock_in"] = clock_in_entry
+
+            ctk.CTkLabel(wrapper, text="Clock Out (auto)", text_color=self.text_color).grid(
+                row=6, column=0, pady=6, padx=5, sticky="e"
+            )
+            clock_out_entry = ctk.CTkEntry(wrapper, width=200)
+            clock_out_entry.grid(row=6, column=1, pady=6, padx=5, sticky="w")
+            clock_out_entry.configure(state="readonly")
+            entries["clock_out"] = clock_out_entry
+
+            def parse_time_str(t: str):
+                t = t.strip()
+                if not t:
+                    return None
+                try:
+                    return datetime.strptime(t, "%H:%M:%S")
+                except ValueError:
+                    raise ValueError("รูปแบบเวลาต้องเป็น HH:MM:SS เช่น 08:00:00")
+
+            def calc_hours(diff):
+                raw = diff.total_seconds() / 3600.0
+                if raw <= 0:
+                    return 0.0
+                return float(math.ceil(raw))  
+
+            def get_base_info():
+                data = {
+                    k: v.get().strip()
+                    for k, v in entries.items()
+                    if k in ["emp_id", "work_date", "job_type", "shift_code"]
+                }
+                required_keys = ["emp_id", "work_date", "job_type", "shift_code"]
+                if any(not data[k] for k in required_keys):
+                    messagebox.showwarning(
+                        "Missing Data",
+                        "กรุณากรอก Employee ID, Work Date, Job Type และ Shift Code ให้ครบ"
+                    )
+                    return None
+                data["job_type"] = data["job_type"].upper()
+                return data
+
+            def handle_check_in():
+                base = get_base_info()
+                if not base:
+                    return
+
+                emp_id = base["emp_id"]
+                work_date = base["work_date"]
+                job_type = base["job_type"]
+                shift_code = base["shift_code"]
+
+                exists = self.db.fetch_one(
+                    "SELECT 1 FROM time_records WHERE emp_id=%s AND work_date=%s",
+                    (emp_id, work_date),
                 )
-                return
+                if exists:
+                    messagebox.showwarning(
+                        "Already Checked In",
+                        f"วันนี้ ( {work_date} ) มี Time Record ของ emp_id {emp_id} อยู่แล้ว"
+                    )
+                    return
 
-            shift_row = self.db.fetch_one(
-                "SELECT start_time, end_time FROM shift WHERE shift_code = %s",
-                (shift_code,),
-            )
-            if not shift_row:
-                messagebox.showwarning("Invalid Shift", f"ไม่พบ Shift code '{shift_code}' ในระบบ")
-                return
-            
-            schedule_in_db, schedule_out_db = shift_row
-
-            schedule_in_dt = parse_time_str(str(schedule_in_db))
-            schedule_out_dt = parse_time_str(str(schedule_out_db))
-
-            schedule_in_str = schedule_in_dt.strftime("%H:%M:%S")
-            schedule_out_str = schedule_out_dt.strftime("%H:%M:%S")
-
-            emp_row = self.db.fetch_one(
-                "SELECT department FROM employees WHERE emp_id = %s",
-                (emp_id,),
-            )
-            if not emp_row:
-                messagebox.showwarning("Not Found", f"ไม่พบ emp_id '{emp_id}' ในตาราง employees")
-                return
-            department = emp_row[0]
-
-            clock_in_str = datetime.now().strftime("%H:%M:%S")
-
-            entries["clock_in"].delete(0, "end")
-            entries["clock_in"].insert(0, clock_in_str)
-
-            try:
-                self.db.run(
-                    """
-                    INSERT INTO time_records
-                        (emp_id, work_date, job_type, shift_code,
-                         `in`, `out`, clock_in, department)
-                    VALUES (%s, %s, %s, %s,
-                            %s, %s, %s, %s)
-                    """,
-                    (
-                        emp_id,
-                        work_date,
-                        job_type,
-                        shift_code,
-                        schedule_in_str,
-                        schedule_out_str,
-                        clock_in_str,
-                        department,
-                    ),
+                shift_row = self.db.fetch_one(
+                    "SELECT start_time, end_time FROM shift WHERE shift_code = %s",
+                    (shift_code,),
                 )
-            except Exception as exc:
-                messagebox.showerror("Database Error", f"ไม่สามารถเช็คอินได้\n{exc}")
-                return
+                if not shift_row:
+                    messagebox.showwarning("Invalid Shift", f"ไม่พบ Shift code '{shift_code}' ในระบบ")
+                    return
+                
+                schedule_in_db, schedule_out_db = shift_row
 
-            messagebox.showinfo("Checked In", f"เช็คอินสำเร็จเวลา {clock_in_str}")
-
-        def handle_check_out():
-            base = get_base_info()
-            if not base:
-                return
-
-            emp_id = base["emp_id"]
-            work_date = base["work_date"]
-
-            row = self.db.fetch_one(
-                """
-                SELECT job_type, shift_code, `in`, `out`, clock_in
-                FROM time_records
-                WHERE emp_id=%s AND work_date=%s
-                """,
-                (emp_id, work_date),
-            )
-            if not row:
-                messagebox.showwarning(
-                    "No Check-in Found",
-                    f"ยังไม่มีการเช็คอินของ emp_id {emp_id} วันที่ {work_date}"
-                )
-                return
-
-            job_type, shift_code, schedule_in_db, schedule_out_db, clock_in_str = row
-
-            try:
                 schedule_in_dt = parse_time_str(str(schedule_in_db))
                 schedule_out_dt = parse_time_str(str(schedule_out_db))
-                clock_in_dt = parse_time_str(clock_in_str)
-            except Exception:
-                messagebox.showwarning(
-                    "Invalid Time Data",
-                    "ข้อมูลเวลาในระบบไม่ถูกต้อง (in/out/clock_in) ตรวจสอบฐานข้อมูล"
+
+                schedule_in_str = schedule_in_dt.strftime("%H:%M:%S")
+                schedule_out_str = schedule_out_dt.strftime("%H:%M:%S")
+
+                emp_row = self.db.fetch_one(
+                    "SELECT department FROM employees WHERE emp_id = %s",
+                    (emp_id,),
                 )
-                return
+                if not emp_row:
+                    messagebox.showwarning("Not Found", f"ไม่พบ emp_id '{emp_id}' ในตาราง employees")
+                    return
+                department = emp_row[0]
 
-            clock_out_str = datetime.now().strftime("%H:%M:%S")
-            entries["clock_out"].delete(0, "end")
-            entries["clock_out"].insert(0, clock_out_str)
+                clock_in_str = datetime.now().strftime("%H:%M:%S")
 
-            try:
-                clock_out_dt = parse_time_str(clock_out_str)
-            except Exception:
-                messagebox.showwarning(
-                    "Invalid Time",
-                    "ไม่สามารถอ่านเวลา Clock Out ปัจจุบันได้"
-                )
-                return
+                entries["clock_in"].configure(state="normal")
+                entries["clock_in"].delete(0, "end")
+                entries["clock_in"].insert(0, clock_in_str)
+                entries["clock_in"].configure(state="readonly")
 
-            from datetime import timedelta
-            if schedule_out_dt <= schedule_in_dt:
-                schedule_out_dt += timedelta(days=1)
-            if clock_out_dt <= clock_in_dt:
-                clock_out_dt += timedelta(days=1)
+                try:
+                    self.db.run(
+                        """
+                        INSERT INTO time_records
+                            (emp_id, work_date, job_type, shift_code,
+                            `in`, `out`, clock_in, department)
+                        VALUES (%s, %s, %s, %s,
+                                %s, %s, %s, %s)
+                        """,
+                        (
+                            emp_id,
+                            work_date,
+                            job_type,
+                            shift_code,
+                            schedule_in_str,
+                            schedule_out_str,
+                            clock_in_str,
+                            department,
+                        ),
+                    )
+                except Exception as exc:
+                    messagebox.showerror("Database Error", f"ไม่สามารถเช็คอินได้\n{exc}")
+                    return
 
-            bf_ot_hours = 0.0
-            af_ot_hours = 0.0
-            bt_ot_hours = 0.0
+                messagebox.showinfo("Checked In", f"เช็คอินสำเร็จเวลา {clock_in_str}")
 
-            if job_type == "W":
-                if clock_in_dt < schedule_in_dt:
-                    bf_ot_hours = calc_hours(schedule_in_dt - clock_in_dt)
-                if clock_out_dt > schedule_out_dt:
-                    af_ot_hours = calc_hours(clock_out_dt - schedule_out_dt)
-            elif job_type in ("H", "L", "T"):
-                bt_ot_hours = calc_hours(clock_out_dt - clock_in_dt)
+            def handle_check_out():
+                base = get_base_info()
+                if not base:
+                    return
 
-            bf_ot = f"{bf_ot_hours:.2f}" if bf_ot_hours > 0 else None
-            af_ot = f"{af_ot_hours:.2f}" if af_ot_hours > 0 else None
-            bt_ot = f"{bt_ot_hours:.2f}" if bt_ot_hours > 0 else None
+                emp_id = base["emp_id"]
+                work_date = base["work_date"]
 
-            try:
-                self.db.run(
+                row = self.db.fetch_one(
                     """
-                    UPDATE time_records
-                    SET clock_out=%s,
-                        bf_ot=%s,
-                        af_ot=%s,
-                        bt_ot=%s
+                    SELECT job_type, shift_code, `in`, `out`, clock_in
+                    FROM time_records
                     WHERE emp_id=%s AND work_date=%s
                     """,
-                    (
-                        clock_out_str,
-                        bf_ot,
-                        af_ot,
-                        bt_ot,
-                        emp_id,
-                        work_date,
-                    ),
+                    (emp_id, work_date),
                 )
-            except Exception as exc:
-                messagebox.showerror("Database Error", f"ไม่สามารถเช็คเอาท์ได้\n{exc}")
-                return
+                if not row:
+                    messagebox.showwarning(
+                        "No Check-in Found",
+                        f"ยังไม่มีการเช็คอินของ emp_id {emp_id} วันที่ {work_date}"
+                    )
+                    return
 
-            messagebox.showinfo(
-                "Checked Out",
-                f"เช็คเอาท์สำเร็จเวลา {clock_out_str}\n"
-                f"BF OT: {bf_ot or '0.00'}  AF OT: {af_ot or '0.00'}  BT OT: {bt_ot or '0.00'}"
-            )
+                job_type, shift_code, schedule_in_db, schedule_out_db, clock_in_str = row
 
-        btn_frame = ctk.CTkFrame(wrapper, fg_color=self.card_color)
-        btn_frame.grid(row=len(fields) + 2, column=0, columnspan=2, pady=(12, 0))
+                try:
+                    schedule_in_dt = parse_time_str(str(schedule_in_db))
+                    schedule_out_dt = parse_time_str(str(schedule_out_db))
+                    clock_in_dt = parse_time_str(clock_in_str)
+                except Exception:
+                    messagebox.showwarning(
+                        "Invalid Time Data",
+                        "ข้อมูลเวลาในระบบไม่ถูกต้อง (in/out/clock_in) ตรวจสอบฐานข้อมูล"
+                    )
+                    return
 
-        ctk.CTkButton(
-            btn_frame,
-            text="Check In (INSERT)",
-            command=handle_check_in,
-            width=140,
-            fg_color=self.accent_color,
-            hover_color="#ff82b7",
-            text_color=self.text_color,
-            corner_radius=10,
-        ).pack(
-            side="left", padx=5
-        )
-        ctk.CTkButton(
-            btn_frame,
-            text="Check Out (UPDATE)",
-            command=handle_check_out,
-            width=140,
-            fg_color=self.card_color,
-            hover_color="#e4ddff",
-            text_color=self.text_color,
-            corner_radius=10,
-        ).pack(
-            side="left", padx=5
-        )
-        ctk.CTkButton(
-            btn_frame,
-            text="Back to Time Records",
-            command=self.show_time_records,
-            width=160,
-            fg_color=self.card_color,
-            hover_color="#e4ddff",
-            text_color=self.text_color,
-            corner_radius=10,
-        ).pack(
-            side="left", padx=5
-        )
+                clock_out_str = datetime.now().strftime("%H:%M:%S")
+
+                entries["clock_out"].configure(state="normal")
+                entries["clock_out"].delete(0, "end")
+                entries["clock_out"].insert(0, clock_out_str)
+                entries["clock_out"].configure(state="readonly")
+
+                try:
+                    clock_out_dt = parse_time_str(clock_out_str)
+                except Exception:
+                    messagebox.showwarning(
+                        "Invalid Time",
+                        "ไม่สามารถอ่านเวลา Clock Out ปัจจุบันได้"
+                    )
+                    return
+
+                from datetime import timedelta
+                if schedule_out_dt <= schedule_in_dt:
+                    schedule_out_dt += timedelta(days=1)
+                if clock_out_dt <= clock_in_dt:
+                    clock_out_dt += timedelta(days=1)
+
+                bf_ot_hours = 0.0
+                af_ot_hours = 0.0
+                bt_ot_hours = 0.0
+
+                if job_type == "W":
+                    if clock_in_dt < schedule_in_dt:
+                        bf_ot_hours = calc_hours(schedule_in_dt - clock_in_dt)
+                    if clock_out_dt > schedule_out_dt:
+                        af_ot_hours = calc_hours(clock_out_dt - schedule_out_dt)
+                elif job_type in ("H", "L", "T"):
+                    bt_ot_hours = calc_hours(clock_out_dt - clock_in_dt)
+
+                bf_ot = f"{bf_ot_hours:.2f}" if bf_ot_hours > 0 else None
+                af_ot = f"{af_ot_hours:.2f}" if af_ot_hours > 0 else None
+                bt_ot = f"{bt_ot_hours:.2f}" if bt_ot_hours > 0 else None
+
+                try:
+                    self.db.run(
+                        """
+                        UPDATE time_records
+                        SET clock_out=%s,
+                            bf_ot=%s,
+                            af_ot=%s,
+                            bt_ot=%s
+                        WHERE emp_id=%s AND work_date=%s
+                        """,
+                        (
+                            clock_out_str,
+                            bf_ot,
+                            af_ot,
+                            bt_ot,
+                            emp_id,
+                            work_date,
+                        ),
+                    )
+                except Exception as exc:
+                    messagebox.showerror("Database Error", f"ไม่สามารถเช็คเอาท์ได้\n{exc}")
+                    return
+
+                messagebox.showinfo(
+                    "Checked Out",
+                    f"เช็คเอาท์สำเร็จเวลา {clock_out_str}\n"
+                    f"BF OT: {bf_ot or '0.00'}  AF OT: {af_ot or '0.00'}  BT OT: {bt_ot or '0.00'}"
+                )
+
+            btn_frame = ctk.CTkFrame(wrapper, fg_color=self.card_color)
+            btn_frame.grid(row=7, column=0, columnspan=2, pady=(12, 0))
+
+            ctk.CTkButton(
+                btn_frame,
+                text="Check In (INSERT)",
+                command=handle_check_in,
+                width=140,
+                fg_color=self.accent_color,
+                hover_color="#ff82b7",
+                text_color=self.text_color,
+                corner_radius=10,
+            ).pack(side="left", padx=5)
+
+            ctk.CTkButton(
+                btn_frame,
+                text="Check Out (UPDATE)",
+                command=handle_check_out,
+                width=140,
+                fg_color=self.card_color,
+                hover_color="#e4ddff",
+                text_color=self.text_color,
+                corner_radius=10,
+            ).pack(side="left", padx=5)
+
+            ctk.CTkButton(
+                btn_frame,
+                text="Back to Time Records",
+                command=self.show_time_records,
+                width=160,
+                fg_color=self.card_color,
+                hover_color="#e4ddff",
+                text_color=self.text_color,
+                corner_radius=10,
+            ).pack(side="left", padx=5)
 
     def show_time_records(self):
         self.show_table_generic("Time Records", "SELECT * FROM time_records")
@@ -888,7 +909,7 @@ class App(ctk.CTk):
                 JOIN employees e ON tr.emp_id = e.emp_id
                 {where_clause}
                 GROUP BY e.emp_id, e.department, YEARWEEK(tr.work_date, 3)
-                HAVING total_ot_hours > %s
+                HAVING total_ot_hours >= %s
                 ORDER BY total_ot_hours DESC
             """
             params.append(ot_limit)
