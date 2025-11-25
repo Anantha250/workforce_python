@@ -657,9 +657,9 @@ class App(ctk.CTk):
                 elif job_type in ("H", "L", "T"):
                     bt_ot_hours = calc_hours(clock_out_dt - clock_in_dt)
 
-                bf_ot = f"{bf_ot_hours:.2f}" if bf_ot_hours > 0 else None
-                af_ot = f"{af_ot_hours:.2f}" if af_ot_hours > 0 else None
-                bt_ot = f"{bt_ot_hours:.2f}" if bt_ot_hours > 0 else None
+                bf_ot = f"{bf_ot_hours:.2f}" if bf_ot_hours > 0 else "0.00"
+                af_ot = f"{af_ot_hours:.2f}" if af_ot_hours > 0 else "0.00"
+                bt_ot = f"{bt_ot_hours:.2f}" if bt_ot_hours > 0 else "0.00"
 
                 try:
                     self.db.run(
