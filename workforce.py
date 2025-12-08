@@ -19,8 +19,6 @@ DB = {
 
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
-
-
 class DBConn:
     def __init__(self):
         self.conn = mysql.connector.connect(**DB)
