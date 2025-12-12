@@ -14,9 +14,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import customtkinter as ctk
 
-# ------------------------------
-# GLOBAL SETTINGS
-# ------------------------------
 DB = dict(
     host="localhost",
     user="root",
